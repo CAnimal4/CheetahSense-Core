@@ -20,6 +20,11 @@ uvicorn app.fastapi_app:app --reload --port 8000
 streamlit run app/streamlit_app.py
 ```
 
+## Static web client (for GitHub Pages or any static host)
+- File: `index.html`
+- Set FastAPI CORS origins via env: `CORS_ORIGINS="https://<your-gh-pages-domain>,http://localhost:8000"` (comma-separated).
+- Host `index.html` as a static page; point the API URL input to your FastAPI `/upload` endpoint.
+
 ## Endpoint
 `POST /upload` (FastAPI)
 - multipart `file` (audio/video; wav recommended), `contribute` (bool), optional `contributor`, `label`, `notes`.

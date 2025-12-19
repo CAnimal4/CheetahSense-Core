@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CheetahSense Web Client</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    body { margin: 0; padding: 24px; max-width: 960px; }
+    h1 { margin-top: 0; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; margin: 8px 0 4px; font-weight: 600; }
+    input, textarea, button { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid #1f2937; background: #0b1222; color: #e2e8f0; }
+    button { background: linear-gradient(135deg, #22c55e, #16a34a); border: none; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    pre { background: #0b1222; padding: 12px; border-radius: 8px; overflow-x: auto; border: 1px solid #1f2937; }
+    small { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>🐆 CheetahSense — Web Client</h1>
+  <div class="card">
+    <label for="apiUrl">API URL</label>
+    <input id="apiUrl" type="text" value="http://localhost:8000/upload" />
+    <small>Set this to your FastAPI /upload endpoint. Ensure CORS allows this origin (set env CORS_ORIGINS on the server).</small>
+  </div>
+
+  <div class="card">
+    <label for="fileInput">Audio/Video file (≤5MB, wav preferred)</label>
+    <input id="fileInput" type="file" accept=".wav,.mp3,.mp4,.m4a,.ogg,.flac" />
+
+    <div class="row">
+      <div>
+        <label><input id="contribute" type="checkbox" /> Contribute if confidence is low</label>
+      </div>
+      <div>
+        <label for="contributor">Contributor (optional)</label>
+        <input id="contributor" type="text" placeholder="Your name or handle" />
+      </div>
+    </div>
+
+    <label for="labelField">Your label (optional, used only when contributing)</label>
+    <input id="labelField" type="text" placeholder="resting | hunting | distress" />
+
+    <label for="notes">Notes (optional)</label>
+    <textarea id="notes" rows="3" placeholder="Short notes"></textarea>
+
+    <button id="submitBtn">Send to CheetahSense</button>
+    <small id="status"></small>
+  </div>
+
+  <div class="card">
+    <h3>Response</h3>
+    <pre id="responseBox">{}</pre>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const contribute = document.getElementById('contribute');
+    const contributor = document.getElementById('contributor');
+    const labelField = document.getElementById('labelField');
+    const notes = document.getElementById('notes');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusEl = document.getElementById('status');
+    const responseBox = document.getElementById('responseBox');
+    const apiUrl = document.getElementById('apiUrl');
+    const MAX_SIZE = 5 * 1024 * 1024;
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+
+    async function send() {
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus('Please choose a file.');
+        return;
+      }
+      if (file.size > MAX_SIZE) {
+        setStatus('File too large (>5MB).');
+        return;
+      }
+      const url = apiUrl.value.trim();
+      if (!url) {
+        setStatus('API URL is required.');
+        return;
+      }
+      const form = new FormData();
+      form.append('file', file, file.name);
+      form.append('contribute', contribute.checked ? 'true' : 'false');
+      if (contributor.value) form.append('contributor', contributor.value);
+      if (labelField.value) form.append('label', labelField.value);
+      if (notes.value) form.append('notes', notes.value);
+
+      submitBtn.disabled = true;
+      setStatus('Uploading and running inference...');
+      try {
+        const resp = await fetch(url, { method: 'POST', body: form });
+        const text = await resp.text();
+        let payload;
+        try { payload = JSON.parse(text); } catch { payload = { error: text }; }
+        responseBox.textContent = JSON.stringify(payload, null, 2);
+        setStatus(resp.ok ? 'Done' : `Error: ${resp.status}`);
+      } catch (err) {
+        setStatus(`Request failed: ${err}`);
+        responseBox.textContent = JSON.stringify({ error: err.toString() }, null, 2);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    submitBtn.addEventListener('click', send);
+  </script>
+</body>
+</html>

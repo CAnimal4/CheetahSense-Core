@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.inference.predictor import Predictor
@@ -16,6 +17,15 @@ predictor = Predictor()
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 CONTRIB_THRESHOLD = float(os.getenv("CONTRIB_THRESHOLD", "0.85"))
 UPLOAD_PREFIX = "cheetahsense_upload_"
+ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
